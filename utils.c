@@ -10,6 +10,7 @@
 
 pthread_mutex_t globalLock = PTHREAD_MUTEX_INITIALIZER; // global mutex (not necessarily used)
 
+
 int generateIdentifier(){
   srand(time(NULL));
   return rand();
@@ -37,7 +38,6 @@ int generatePacket(packet_t *dataPacket, char *filename, int type, int TTL){
 
 int initializeList(IDlist_t *dataList){
   dataList->num = 0;
-  return 0;
 }
 
 
@@ -114,7 +114,7 @@ int addNeighbor(neighbors_t *neighborData, unsigned long hostIPAddress, int port
 }
 
 // Contact neighbors and send CONNECT packet to all neighbors
-int connectToNeighbors(neighbors_t *neighborData){
+int connectToNeighbors(neighbors_t *neighborData, int myPortNumber){
   printf("[DEBUG] Hello? I am trying to connect ... \n");
   int i;
   packet_t dataPacket;
@@ -123,6 +123,7 @@ int connectToNeighbors(neighbors_t *neighborData){
 
   // connect to all neighbors stored
   for (i = 0; i < num_neighbors; ++i){
+    dataPacket.port = myPortNumber;
 
     // generate packet and returns the packet ID
     generatePacket(&dataPacket, NULL, CONNECT, 0);
@@ -189,7 +190,7 @@ int floodRequest(neighbors_t *neighbors, int portno, packet_t *packet, int size)
   for (i = 0; i < num_neighbors; ++ i){
     inaddr = neighbors->neighbor_list[i].inaddr;
 
-    if (sendToSocket(inaddr, portno, packet, size) < 0) {
+    if (sendToSocket(inaddr, neighbors->neighbor_list[i].port, packet, size) < 0) {
       return -1;
     }
   }

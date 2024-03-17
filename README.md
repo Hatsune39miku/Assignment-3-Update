@@ -109,7 +109,7 @@ $ ./p2p_server [PORT_NUM] [TTL] [DIR] [NEIGHBOR_HOST, ...]
 (terminal Bob)   $ ./p2p_server 49152 2 dir2 127.0.0.1 49151 
 
 // Carol being a neighbor connected to Bob
-(terminal Carol) $ ./p2p_server 49153 2 dir2 127.0.0.1 49152  
+(terminal Carol) $ ./p2p_server 49153 2 dir3 127.0.0.1 49152  
 ```  
 
 Now Carol searches for ‘file1’ in terminal, then log:
@@ -120,27 +120,44 @@ file1
 [CONNECT] Packet sent. size: 140
 [FILE] Enter the File Name for Search:
 Message received, size: 140
-RESPONSE packet
+[CONNECT] Received new packet: RESPONSE packet
 
 [FILE] File file1 found on 127.0.0.1, with port: 49151
 
 ```
 
-Bob would forward packet to Alice since TTL is still alive. Alice log:
+Bob would forward packet to Alice since TTL is still alive.   
+Alice log:
 
 ```
 [CONNECT] Packet sent size: 140
 [INFO] Received new packet: QUERY packet
 [RESPON] File file1 found, responding to query.
-```
+```  
 
-Now if Alice searches for file3, it logs:
+Bob log:
+```
+[CONNECT] Packet sent. size: 140
+[INFO] File Not found, Forward to next neighbor address: 127.0.0.1:49151
+```    
+
+  
+  
+***Now*** if Alice searches for file3, it logs:
 
 ```
 file3
+[CONNECT] Socket created successfully
 [CONNECT] Packet sent size: 140
 
+```  
+Bob logs:
 ```
+Message received, size: 140
+[CONNECT] Received new packet: QUERY packet
+
+```  
+And Carol logs nothing new.  
 
 Bob would not forward the packet to Carol address due to the initial TTL being 1. As a result, the packet will expire at Bob. This proves the file flooding query and TTL control.  
 
@@ -160,28 +177,43 @@ Now all three parties are connected with each other as neighbors.
 (terminal Bob)   $ ./p2p_server 49152 2 dir2 127.0.0.1 49151 
 
 // Carol being a neighbor connected to Bob
-(terminal Carol) $ ./p2p_server 49153 2 dir2 127.0.0.1 49152 127.0.0.1 49151
+(terminal Carol) $ ./p2p_server 49153 2 dir3 127.0.0.1 49152 127.0.0.1 49151
 ```
 
-If Alice now queries for ‘file3’, the query will be forwarded to both Bob and Carol. For example, Alice searches for 'file3', Bob does not find it, and would again forward to Carol:
-
+If Alice now queries for ‘file3’, the query will be forwarded to both Bob and Carol. For example, Alice searches for 'file3', Bob does not find it, and would again forward to Carol:  
+Alice log:  
 ```
-[FILE] Enter the File Name for Search: 
 file3
-[CONNECT] Packet sent size: 140
-[INFO] Received new packet: QUERY packet
-[INFO] File Not found, Forward to next neighbor: 49152
-```
-
-But Carol already handled this query from Alice, and would not respond to the same query again. Therefore it would simply ignore:
-
-```
-[INFO] Received new packet: QUERY packet
-[CONNECT] Packet sent size: 140
-[INFO] File file3 found, responding to query.
+[CONNECT] Socket created successfully
+[CONNECT] Packet sent. size: 140
 Message received, size: 140
-[INFO] Received new packet: QUERY packet
-[DUPLICATE ID] Duplicate packet with ID 1165118814 detected. Ignoring and discarding.
+[CONNECT] Received new packet: RESPONSE packet
+[FILE] File file3 found on 127.0.0.1 with port: 49153
+```
+
+Bob log:
+```
+Message received, size: 140
+[CONNECT] Received new packet: QUERY packet
+[CONNECT] Socket created successfully
+[CONNECT] Packet sent. size: 140
+[INFO] Not found. Forward to next neighbor address: 127.0.0.1:49153
+```
+
+But Carol already handled this query from Alice, and would not respond to the same query again. Therefore it would simply ignore.  
+
+Carol log (Carol would report the file found message, and then ignore the duplicated query):
+
+```
+Message received, size: 140
+[CONNECT] Received new packet: QUERY packet
+[INFO] File file3 found, responding to query.  
+
+[CONNECT] Socket created successfully
+[CONNECT] Packet sent. size: 140
+Message received, size: 140
+[CONNECT] Received new packet: QUERY packet
+[DUPLICATE ID] Duplicate packet with ID 797776514 detected. Ignoring and discarding.
 ```
 
 Thus proving the avoid loop functionality.

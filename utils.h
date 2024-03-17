@@ -126,7 +126,7 @@ int addNeighbor(neighbors_t *neighbors, unsigned long host_in_addr, int port);
 int read_neighbor_config(char *filename, neighbors_t *neighbors);
 
 // connect to all neighbors
-int connectToNeighbors(neighbors_t *neighbors);
+int connectToNeighbors(neighbors_t *neighbors, int myPortNumber);
 
 // find neighbor in neighbors
 int isNeighborFound(unsigned long host_in_addr, int port, neighbors_t *neighbors); 

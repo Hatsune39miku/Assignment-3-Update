@@ -11,14 +11,14 @@
 
 int main(int argc, char **argv) {
     // Read in port number, TTL, directory, and neighbors from arguments
-    int portNumber; // host port number
+    int portNumber, myPortNumber; // neighbor port number; host port number
     int ttl; // host ttl
     char directory[128]; // host directory
 
     neighbors_t neighbors;
     pthread_mutex_t lock;
 
-    portNumber = atoi(argv[1]);
+    myPortNumber = atoi(argv[1]);
     ttl = atoi(argv[2]);
     strcpy(directory, argv[3]);
 
