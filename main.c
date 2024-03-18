@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 
     // Add values to server arguments
     serverArg.idList = &idList;
-    serverArg.port = portNumber;
+    serverArg.port = myPortNumber;
     serverArg.directory = directory;
     serverArg.lock = &lock;
     serverArg.neighbors = &neighbors;
