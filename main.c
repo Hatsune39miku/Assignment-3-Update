@@ -8,78 +8,59 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
 int main(int argc, char **argv) {
-    // Read in port number, TTL, directory, and neighbors from arguments
-    int portNumber, myPortNumber; // neighbor port number; host port number
-    int ttl; // host ttl
-    char directory[128]; // host directory
-
-    neighbors_t neighbors;
-    pthread_mutex_t lock;
-
-    myPortNumber = atoi(argv[1]);
-    ttl = atoi(argv[2]);
-    strcpy(directory, argv[3]);
-
     if (argc < 4) {
         ERROR("ERROR: Insufficient arguments provided. Usage: ./p2p_server [PORT_NUM] [TTL] [DIR] [NEIGHBOR_HOST, ...]\n");
     }
 
-    if (argc >= 4) {
-        // Initialize neighbors
-        initializeNeighbors(&neighbors);
-        int i;
-        for (i = 4; i < argc - 1; i += 2) {  // Increment by 2 to process both IP and port at the same time
-            unsigned long hostIpAddress = getHostAddr(argv[i]);
-            printf("[NEIGHBOR] HostIPaddr: %lu\n", hostIpAddress);
-            portNumber = atoi(argv[i+1]);
-            if (hostIpAddress < 0) {
-                ERROR("ERROR: Could not find host\n");
-            }
-            // Save to neighbors data structure
-            addNeighbor(&neighbors, hostIpAddress, portNumber);
-            
-            //[DEBUG] printNeighborData(&neighbors);
-            //[DEBUG] printf("[NEIGHBOR] Sent connection request to neighbor with address %s:%lu \n", argv[i], portNumber);
-        }
+    int myPortNumber = atoi(argv[1]);
+    int ttl = atoi(argv[2]);
+    char directory[128];
+    strcpy(directory, argv[3]);
+
+    neighbors_t neighbors;
+    IDlist_t idList;
+
+    initializeNeighbors(&neighbors);
+    initializeList(&idList); 
+    for (int i = 4; i < argc; i += 2) {
+        unsigned long hostIpAddress = getHostAddr(argv[i]);
+        int portNumber = atoi(argv[i + 1]);
+        addNeighbor(&neighbors, hostIpAddress, portNumber);
     }
 
-    IDlist_t idList;
-    serverArg_t serverArg;
+    pthread_mutex_t lock;
+    pthread_mutex_init(&lock, NULL);
 
-    // Add values to server arguments
-    serverArg.idList = &idList;
-    serverArg.port = myPortNumber;
-    serverArg.directory = directory;
-    serverArg.lock = &lock;
-    serverArg.neighbors = &neighbors;
+    serverArg_t serverArg = { .idList = &idList, .port = myPortNumber, .directory = directory, .lock = &lock, .neighbors = &neighbors };
+
+    pthread_t serverThreadId;
+    if (pthread_create(&serverThreadId, NULL, server, (void *)&serverArg) != 0) {
+        ERROR("Failed to create the server thread\n");
+    }
 
 
-    /* 
-     * TODO: handle server operation that you implements from server.c . 
-     *       You may need a thread mutex to manage server operation.
-     */
-
-    // Main thread while loop: host sender
     while (1) {
-        // Read input from user
-        char input[MAX_STRLEN];
-
-        // Input filename for search
         printf("[FILE] Enter the File Name for Search: \n");
+        char input[MAX_STRLEN];
         fgets(input, MAX_STRLEN, stdin);
         int len = strlen(input);
-        if (input[0] != '\0' && input[len - 1] == '\n') {
-            input[len - 1] = '\0';
-        }
-      
-        // First search local server directory
+        if (input[len - 1] == '\n') input[len - 1] = '\0';
+
         if (findInDirectory(directory, input)) {
             printf("[FILE] Found file '%s' in local directory \n", input);
             continue;
         }
+
+        packet_t packet;
+        generatePacket(&packet, input, QUERY, ttl);
+        floodRequest(&neighbors, myPortNumber, &packet, sizeof(packet));
     }
+
+    pthread_join(serverThreadId, NULL);
+    pthread_mutex_destroy(&lock);
 
     return 0;
 }
+
+
